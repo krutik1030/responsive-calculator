@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Responsive Calculator with Toggle History</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #1e1e1e;
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+      max-width: 900px;
+      width: 100%;
+      padding: 20px;
+      position: relative;
+    }
+
+    .calculator {
+      flex: 1;
+      background: #2c2c2c;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0px 5px 15px rgba(0,0,0,0.4);
+    }
+
+    .display {
+      background: #000;
+      color: #0f0;
+      font-size: 2rem;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      text-align: right;
+      overflow-x: auto;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-gap: 10px;
+    }
+
+    button {
+      padding: 20px;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 10px;
+      background: #444;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #666;
+    }
+
+    .equal {
+      grid-column: span 2;
+      background: #0a84ff;
+    }
+
+    .equal:hover {
+      background: #006edc;
+    }
+
+    .history {
+      flex: 0.7;
+      background: #2c2c2c;
+      padding: 20px;
+      border-radius: 15px;
+      max-height: 500px;
+      overflow-y: auto;
+      box-shadow: 0px 5px 15px rgba(0,0,0,0.4);
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .history h3 {
+      margin-top: 0;
+      text-align: center;
+      color: #0a84ff;
+    }
+
+    .history-item {
+      border-bottom: 1px solid #555;
+      padding: 5px 0;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .history-item:hover {
+      background: #3a3a3a;
+    }
+
+    .clear-history {
+      background: crimson;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    /* Toggle button for mobile */
+    .toggle-history {
+      display: none;
+      background: #0a84ff;
+      margin: 10px 0;
+      width: 100%;
+    }
+
+    /* Responsive Styles */
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .history {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        max-height: 60%;
+        transform: translateY(100%);
+        border-radius: 15px 15px 0 0;
+        z-index: 1000;
+      }
+
+      .history.open {
+        transform: translateY(0);
+      }
+
+      .toggle-history {
+        display: block;
+      }
+
+      button {
+        padding: 15px;
+        font-size: 1rem;
+      }
+
+      .display {
+        font-size: 1.5rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      button {
+        padding: 12px;
+        font-size: 0.9rem;
+      }
+
+      .history h3 {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Calculator -->
+    <div class="calculator">
+      <div class="display" id="display">0</div>
+      <div class="buttons">
+        <button onclick="clearDisplay()">C</button>
+        <button onclick="deleteChar()">⌫</button>
+        <button onclick="appendChar('%')">%</button>
+        <button onclick="appendChar('/')">÷</button>
+
+        <button onclick="appendChar('7')">7</button>
+        <button onclick="appendChar('8')">8</button>
+        <button onclick="appendChar('9')">9</button>
+        <button onclick="appendChar('*')">×</button>
+
+        <button onclick="appendChar('4')">4</button>
+        <button onclick="appendChar('5')">5</button>
+        <button onclick="appendChar('6')">6</button>
+        <button onclick="appendChar('-')">−</button>
+
+        <button onclick="appendChar('1')">1</button>
+        <button onclick="appendChar('2')">2</button>
+        <button onclick="appendChar('3')">3</button>
+        <button onclick="appendChar('+')">+</button>
+
+        <button onclick="appendChar('0')">0</button>
+        <button onclick="appendChar('.')">.</button>
+        <button onclick="appendChar('(')">(</button>
+        <button onclick="appendChar(')')">)</button>
+
+        <button class="equal" onclick="calculate()">=</button>
+      </div>
+      <button class="toggle-history" onclick="toggleHistory()">📜 Show / Hide History</button>
+    </div>
+
+    <!-- History Panel -->
+    <div class="history" id="history">
+      <h3>History</h3>
+      <div id="history-list"></div>
+      <button class="clear-history" onclick="clearHistory()">Clear History</button>
+    </div>
+  </div>
+
+  <script>
+    let display = document.getElementById('display');
+    let historyList = document.getElementById('history-list');
+    let historyPanel = document.getElementById('history');
+
+    // Load history from localStorage
+    window.onload = () => {
+      let savedHistory = JSON.parse(localStorage.getItem("calcHistory")) || [];
+      savedHistory.forEach(entry => renderHistoryItem(entry.expression, entry.result));
+    };
+
+    function appendChar(char) {
+      if (display.innerText === "0") {
+        display.innerText = char;
+      } else {
+        display.innerText += char;
+      }
+    }
+
+    function clearDisplay() {
+      display.innerText = "0";
+    }
+
+    function deleteChar() {
+      display.innerText = display.innerText.slice(0, -1) || "0";
+    }
+
+    function calculate() {
+      try {
+        let expression = display.innerText
+          .replace(/÷/g,'/')
+          .replace(/×/g,'*');
+        let result = eval(expression);
+        addToHistory(expression, result);
+        display.innerText = result;
+      } catch {
+        display.innerText = "Error";
+      }
+    }
+
+    function addToHistory(expression, result) {
+      let savedHistory = JSON.parse(localStorage.getItem("calcHistory")) || [];
+      savedHistory.unshift({ expression, result });
+      localStorage.setItem("calcHistory", JSON.stringify(savedHistory));
+
+      renderHistoryItem(expression, result, true);
+    }
+
+    function renderHistoryItem(expression, result, prepend = false) {
+      let item = document.createElement("div");
+      item.classList.add("history-item");
+      item.innerText = expression + " = " + result;
+
+      item.onclick = () => {
+        display.innerText = expression;
+      };
+
+      if (prepend) {
+        historyList.prepend(item);
+      } else {
+        historyList.appendChild(item);
+      }
+    }
+
+    function clearHistory() {
+      historyList.innerHTML = "";
+      localStorage.removeItem("calcHistory");
+    }
+
+    function toggleHistory() {
+      historyPanel.classList.toggle("open");
+    }
+
+    // Keyboard support
+    document.addEventListener("keydown", (event) => {
+      const key = event.key;
+
+      if (!isNaN(key) || key === ".") {
+        appendChar(key);
+      } else if (["+", "-", "*", "/", "%", "(", ")"].includes(key)) {
+        appendChar(key);
+      } else if (key === "Enter" || key === "=") {
+        event.preventDefault();
+        calculate();
+      } else if (key === "Backspace") {
+        deleteChar();
+      } else if (key === "Escape") {
+        clearDisplay();
+      }
+    });
+  </script>
+</body>
+</html>
